@@ -119,10 +119,11 @@ CRITICAL RULES:
    - spec type "integer" → ui type "number"
    - spec type "float" → ui type "number"
    - spec type "boolean" → ui type "checkbox"
-4. Keep command simple like: "python script.py --arg {{{{input_name}}}}"
-5. DO NOT use inline Python with -c flag
-6. DO NOT use escape sequences in command field
-7. Return ONLY valid JSON, no explanations
+4. CRITICAL: Copy the command EXACTLY as written in the runme.md file
+5. DO NOT modify, simplify, or rewrite the command in any way
+6. Preserve ALL command syntax including quotes, flags, and inline code
+7. Use {{{{input_name}}}} placeholders for variable substitution
+8. Return ONLY valid JSON, no explanations
 
 Return the JSON:"""
 
