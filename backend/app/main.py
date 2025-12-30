@@ -19,6 +19,7 @@ from .models.schemas import (
     JobStatus,
 )
 from .agents.runme_parser import RunmeParser
+from .agents.huggingface_parser import HuggingFaceParser
 from .agents.modal_runner import ModalRunner
 
 
@@ -40,8 +41,20 @@ app.add_middleware(
 
 # Global state (in production, use a database)
 parsed_specs: Dict[str, ParsedResult] = {}
-parser = RunmeParser()
-runner = ModalRunner(mock_mode=True)  # Start in mock mode
+
+# Choose parser based on available API key
+# Priority: HUGGINGFACE_API_KEY (free!) > ANTHROPIC_API_KEY
+if os.getenv("HUGGINGFACE_API_KEY"):
+    print("🤗 Using Hugging Face parser (FREE!)")
+    parser = HuggingFaceParser()
+elif os.getenv("ANTHROPIC_API_KEY"):
+    print("🤖 Using Claude parser")
+    parser = RunmeParser()
+else:
+    print("⚠️  No API key found! Set HUGGINGFACE_API_KEY or ANTHROPIC_API_KEY")
+    parser = None
+
+runner = ModalRunner(mock_mode=False)  # Start in mock mode
 
 
 @app.get("/")
@@ -59,9 +72,15 @@ async def parse_runme(request: ParseRequest):
     """
     Parse a runme.md file and generate UI configuration
 
-    This endpoint uses Claude to understand the runme.md specification
+    This endpoint uses AI (Hugging Face or Claude) to understand the runme.md specification
     and generates both the structured spec and UI config.
     """
+    if parser is None:
+        raise HTTPException(
+            status_code=503,
+            detail="No AI parser available. Please set HUGGINGFACE_API_KEY or ANTHROPIC_API_KEY"
+        )
+
     try:
         # Parse the content
         result = parser.parse(request.content)

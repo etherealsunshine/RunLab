@@ -86,9 +86,7 @@ class ModalRunner:
         """
         try:
             import modal
-
-            # Create Modal app
-            stub = modal.Stub(f"runlab-{spec.name}")
+            import subprocess as subprocess_module
 
             # Parse GPU requirement
             gpu_config = None
@@ -98,32 +96,41 @@ class ModalRunner:
             # Parse memory requirement (e.g., "8GB" -> 8192)
             memory_mb = self._parse_memory(spec.compute.memory)
 
-            # Create the function
-            @stub.function(
-                image=modal.Image.from_registry(spec.container.image),
-                cpu=spec.compute.cpu,
-                memory=memory_mb,
-                gpu=gpu_config,
-                timeout=spec.compute.timeout,
-            )
-            def run_container():
-                import subprocess
-                result = subprocess.run(
-                    command,
-                    shell=True,
-                    capture_output=True,
-                    text=True,
-                    cwd=spec.container.working_dir
-                )
-                return {
-                    "stdout": result.stdout,
-                    "stderr": result.stderr,
-                    "returncode": result.returncode
-                }
+            # Use Modal's simpler syntax - create image and run directly
+            image = modal.Image.from_registry(spec.container.image)
 
-            # Execute the function
-            with stub.run():
-                result = run_container.remote()
+            # Create a sandbox and run the command directly
+            app = modal.App(f"runlab-{spec.name}")
+
+            # Use spawn_sandbox for simpler execution without serialization
+            with app.run():
+                # Create a sandbox with the specified image
+                sb = modal.Sandbox.create(
+                    image=image,
+                    cpu=spec.compute.cpu,
+                    memory=memory_mb,
+                    gpu=gpu_config,
+                    timeout=spec.compute.timeout,
+                    app=app,
+                )
+
+                try:
+                    # Execute the command in the sandbox
+                    process = sb.exec("sh", "-c", command)
+                    process.wait()
+
+                    # Get output
+                    stdout = process.stdout.read()
+                    stderr = process.stderr.read()
+                    returncode = process.returncode
+
+                    result = {
+                        "stdout": stdout,
+                        "stderr": stderr,
+                        "returncode": returncode
+                    }
+                finally:
+                    sb.terminate()
 
             # Create job status
             job = JobStatus(

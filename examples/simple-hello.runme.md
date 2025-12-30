@@ -6,7 +6,7 @@
 - **version**: 1.0.0
 
 ## Container
-- **image**: python:3.11-slim
+- **image**: python:3.12-slim
 - **working_dir**: /app
 
 ## Compute Requirements
@@ -36,14 +36,7 @@
 
 ## Command
 ```bash
-python -c "
-name = '{name}'
-count = {count}
-enthusiastic = {enthusiastic}
-exclaim = '!!!' if enthusiastic else '!'
-for i in range(count):
-    print(f'Hello, {{name}}{{exclaim}}')
-"
+python3 -c "name='{name}'; count={count}; enthusiastic={enthusiastic}; exclaim='!!!' if enthusiastic else '!'; [print(f'Hello, {name}{exclaim}') for _ in range(count)]"
 ```
 
 ## Outputs
